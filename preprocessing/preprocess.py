@@ -32,7 +32,7 @@ Original dataset structure before the preprocessing:
         -DeepFakeDetection
             -c23
                 -videos
-                
+
 -Celeb-DF-v1/v2
     -Celeb-synthesis
         -videos
@@ -52,7 +52,6 @@ Original dataset structure before the preprocessing:
 
 We then additionally obtain "frames", "landmarks", and "mask" directories in same directory as the "videos" folder.
 """
-
 
 import os
 import sys
@@ -104,14 +103,14 @@ def create_logger(log_path):
 def get_keypts(image, face, predictor, face_detector):
     # detect the facial landmarks for the selected face
     shape = predictor(image, face)
-    
+
     # select the key points for the eyes, nose, and mouth
     leye = np.array([shape.part(37).x, shape.part(37).y]).reshape(-1, 2)
     reye = np.array([shape.part(44).x, shape.part(44).y]).reshape(-1, 2)
     nose = np.array([shape.part(30).x, shape.part(30).y]).reshape(-1, 2)
     lmouth = np.array([shape.part(49).x, shape.part(49).y]).reshape(-1, 2)
     rmouth = np.array([shape.part(55).x, shape.part(55).y]).reshape(-1, 2)
-    
+
     pts = np.concatenate([leye, reye, nose, lmouth, rmouth], axis=0)
 
     return pts
@@ -119,7 +118,7 @@ def get_keypts(image, face, predictor, face_detector):
 
 def extract_aligned_face_dlib(face_detector, predictor, image, res=256, mask=None):
     def img_align_crop(img, landmark=None, outsize=None, scale=1.3, mask=None):
-        """ 
+        """
         align and crop the face according to the given bbox and landmarks
         landmark: 5 key points
         """
@@ -167,7 +166,7 @@ def extract_aligned_face_dlib(face_detector, predictor, image, res=256, mask=Non
 
         if outsize is not None:
             img = cv2.resize(img, (outsize[1], outsize[0]))
-        
+
         if mask is not None:
             mask = cv2.warpAffine(mask, M, (target_size[1], target_size[0]))
             mask = cv2.resize(mask, (outsize[1], outsize[0]))
@@ -186,14 +185,14 @@ def extract_aligned_face_dlib(face_detector, predictor, image, res=256, mask=Non
     if len(faces):
         # For now only take the biggest face
         face = max(faces, key=lambda rect: rect.width() * rect.height())
-        
+
         # Get the landmarks/parts for the face in box d only with the five key points
         landmarks = get_keypts(rgb, face, predictor, face_detector)
 
         # Align and crop the face
         cropped_face, mask_face = img_align_crop(rgb, landmarks, outsize=(res, res), mask=mask)
         cropped_face = cv2.cvtColor(cropped_face, cv2.COLOR_RGB2BGR)
-        
+
         # Extract the all landmarks from the aligned face
         face_align = face_detector(cropped_face, 1)
         if len(face_align) == 0:
@@ -202,17 +201,18 @@ def extract_aligned_face_dlib(face_detector, predictor, image, res=256, mask=Non
         landmark = face_utils.shape_to_np(landmark)
 
         return cropped_face, landmark, mask_face
-    
+
     else:
         return None, None, None
 
+
 def image_manipulate(
-    image_path: Path,
-    dataset_path: Path,
-    face_detector,
-    face_predictor,    
-    res=256
-    ) -> None:
+        image_path: Path,
+        dataset_path: Path,
+        face_detector,
+        face_predictor,
+        res=256
+) -> None:
     """
     Processes a single image file by detecting and cropping the largest face and saving the results.
 
@@ -258,15 +258,15 @@ def image_manipulate(
         return
 
     # Save cropped face and landmarks
-    save_path = dataset_path / "processed" / image_path.stem
+    save_path = dataset_path / "frames" / image_path.stem
     save_path.mkdir(parents=True, exist_ok=True)
 
     # Save cropped face
-    cropped_face_path = save_path / f"{image_path.stem}_cropped.png"
+    cropped_face_path = save_path / f"{image_path.stem}.png"
     cv2.imwrite(str(cropped_face_path), cropped_face)
 
     # Save landmarks
-    landmarks_path = save_path / f"{image_path.stem}_landmarks.npy"
+    landmarks_path = dataset_path / "landmarks" / image_path.stem / f"{image_path.stem}.npy"
     np.save(str(landmarks_path), landmarks)
 
 
@@ -303,6 +303,7 @@ def preprocess_images(dataset_path, logger):
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
 
+
 if __name__ == '__main__':
     # from config.yaml load parameters
     yaml_path = './config.yaml'
@@ -317,7 +318,7 @@ if __name__ == '__main__':
     dataset_name = config['preprocess']['dataset_name']['default']
     dataset_root_path = config['preprocess']['dataset_root_path']['default']
     dataset_path = Path(os.path.join(dataset_root_path, dataset_name))
-    
+
     # use dataset_name and dataset_root_path to get dataset_path
     dataset_path = Path(os.path.join(dataset_root_path, dataset_name))
 
@@ -328,28 +329,28 @@ if __name__ == '__main__':
     # Define dataset path based on the input arguments
     ## faceforensic++
     if dataset_name == 'FaceForensics++':
-        sub_dataset_names = ["original_sequences/youtube","original_sequences/actors", \
+        sub_dataset_names = ["original_sequences/youtube", "original_sequences/actors", \
                              "manipulated_sequences/Deepfakes", \
-                            "manipulated_sequences/Face2Face", "manipulated_sequences/FaceSwap", \
-                            "manipulated_sequences/NeuralTextures","manipulated_sequences/FaceShifter",\
-                            "manipulated_sequences/DeepFakeDetection"]
+                             "manipulated_sequences/Face2Face", "manipulated_sequences/FaceSwap", \
+                             "manipulated_sequences/NeuralTextures", "manipulated_sequences/FaceShifter", \
+                             "manipulated_sequences/DeepFakeDetection"]
         sub_dataset_paths = [Path(os.path.join(dataset_path, name, comp)) for name in sub_dataset_names]
         # mask
         mask_dataset_names = ["manipulated_sequences/Deepfakes", "manipulated_sequences/Face2Face", \
-                            "manipulated_sequences/FaceSwap", "manipulated_sequences/NeuralTextures",\
-                            "manipulated_sequences/DeepFakeDetection"]
+                              "manipulated_sequences/FaceSwap", "manipulated_sequences/NeuralTextures", \
+                              "manipulated_sequences/DeepFakeDetection"]
         # mask_dataset_names = []
         mask_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in mask_dataset_names]
     ## Celeb-DF-v1
     elif dataset_name == 'Celeb-DF-v1':
         sub_dataset_names = ['Celeb-real', 'Celeb-synthesis', 'YouTube-real']
         sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
-    
+
     ## Celeb-DF-v2
     elif dataset_name == 'Celeb-DF-v2':
         sub_dataset_names = ['Celeb-real', 'Celeb-synthesis', 'YouTube-real']
         sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
-    
+
     ## DFDCP
     elif dataset_name == 'DFDCP':
         sub_dataset_names = ['original_videos', 'method_A', 'method_B']
@@ -359,24 +360,24 @@ if __name__ == '__main__':
     elif dataset_name == 'DFDC':
         sub_dataset_names = ['test', 'train']
         # train dataset is too large, so we split it into 50 parts
-        sub_train_dataset_names = ["dfdc_train_part_" + str(i) for i in range(0,50)]
+        sub_train_dataset_names = ["dfdc_train_part_" + str(i) for i in range(0, 50)]
         sub_train_dataset_paths = [Path(os.path.join(dataset_path, 'train', name)) for name in sub_train_dataset_names]
         sub_dataset_paths = [Path(os.path.join(dataset_path, 'test'))] + sub_train_dataset_paths
-   
-   ## DeeperForensics-1.0
+
+    ## DeeperForensics-1.0
     elif dataset_name == 'DeeperForensics-1.0':
-        real_sub_dataset_names = ['source_videos/' + name for name in os.listdir(os.path.join(dataset_path, 'source_videos'))]
-        fake_sub_dataset_names = ['manipulated_videos/' + name for name in os.listdir(os.path.join(dataset_path, 'manipulated_videos'))]
+        real_sub_dataset_names = ['source_videos/' + name for name in
+                                  os.listdir(os.path.join(dataset_path, 'source_videos'))]
+        fake_sub_dataset_names = ['manipulated_videos/' + name for name in
+                                  os.listdir(os.path.join(dataset_path, 'manipulated_videos'))]
         real_sub_dataset_names.extend(fake_sub_dataset_names)
         sub_dataset_names = real_sub_dataset_names
         sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
-        
+
     ## UADFV
     elif dataset_name == 'UADFV':
         sub_dataset_names = ['fake', 'real']
         sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
-    else:
-        raise ValueError(f"Dataset {dataset_name} not recognized")
 
     ## DeepFakeFace
     elif dataset_name == 'DeepFakeFace':
@@ -384,7 +385,7 @@ if __name__ == '__main__':
         sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized")
-    
+
     # Check if dataset path exists
     if not Path(dataset_path).exists():
         logger.error(f"Dataset path does not exist: {dataset_path}")
@@ -401,9 +402,9 @@ if __name__ == '__main__':
             # only part of FaceForensics++ has mask
             if dataset_name == 'FaceForensics++' and sub_dataset_path.parent in mask_dataset_paths:
                 mask_dataset_path = os.path.join(sub_dataset_path.parent, "masks")
-                preprocess_images(sub_dataset_path, mask_dataset_path, dataset_path)
+                preprocess_images(dataset_path, logger)
             else:
-                preprocess_images(sub_dataset_path, None, dataset_path)
+                preprocess_images(dataset_path, logger)
     else:
         logger.error(f"Sub Dataset path does not exist: {sub_dataset_paths}")
         sys.exit()
