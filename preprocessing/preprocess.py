@@ -258,7 +258,7 @@ def image_manipulate(
         return
 
     # Save cropped face and landmarks
-    save_path = dataset_path / "frames" / image_path.stem
+    save_path = dataset_path / "frames"
     save_path.mkdir(parents=True, exist_ok=True)
 
     # Save cropped face
@@ -266,7 +266,8 @@ def image_manipulate(
     cv2.imwrite(str(cropped_face_path), cropped_face)
 
     # Save landmarks
-    landmarks_path = dataset_path / "landmarks" / image_path.stem / f"{image_path.stem}.npy"
+    landmarks_path = dataset_path / "landmarks" / f"{image_path.stem}.npy"
+    os.makedirs(os.path.dirname(landmarks_path), exist_ok=True)
     np.save(str(landmarks_path), landmarks)
 
 
