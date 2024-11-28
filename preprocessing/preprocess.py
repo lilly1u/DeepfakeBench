@@ -403,9 +403,9 @@ if __name__ == '__main__':
             # only part of FaceForensics++ has mask
             if dataset_name == 'FaceForensics++' and sub_dataset_path.parent in mask_dataset_paths:
                 mask_dataset_path = os.path.join(sub_dataset_path.parent, "masks")
-                preprocess_images(dataset_path, logger)
+                preprocess_images(sub_dataset_path, logger)
             else:
-                preprocess_images(dataset_path, logger)
+                preprocess_images(sub_dataset_path, logger)
     else:
         logger.error(f"Sub Dataset path does not exist: {sub_dataset_paths}")
         sys.exit()
