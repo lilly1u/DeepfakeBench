@@ -3,7 +3,7 @@ lmdb: True
 dry_run: false
 dataset_root_rgb: '/content/DeepfakeBench/datasets/'
 lmdb_dir:  '/content/DeepfakeBench/datasets/lmdb/'
-dataset_json_folder: '/data/home/zhiyuanyan/DeepfakeBenchv2/preprocessing/dataset_json'
+dataset_json_folder: '/content/DeepfakeBench/preprocessing/dataset_json/DeepFakeFace.json'
 SWA: False
 save_avg: True
 log_dir: '/content/DeepfakeBench/logs/testing_bench'

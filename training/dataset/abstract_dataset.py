@@ -31,9 +31,11 @@ import albumentations as A
 
 from .albu import IsotropicResize
 
-FFpp_pool=['FaceForensics++','FaceShifter','DeepFakeDetection','FF-DF','FF-F2F','FF-FS','FF-NT']#
+FFpp_pool = ['FaceForensics++', 'FaceShifter', 'DeepFakeDetection', 'FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT',
+             'DeepFakeFace']  #
 
-def all_in_pool(inputs,pool):
+
+def all_in_pool(inputs, pool):
     for each in inputs:
         if each not in pool:
             return False
@@ -44,6 +46,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
     """
     Abstract base class for all deepfake datasets.
     """
+
     def __init__(self, config=None, mode='train'):
         """Initializes the dataset object.
 
@@ -54,7 +57,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         Raises:
             NotImplementedError: If mode is not train or test.
         """
-        
+
         # Set the configuration and mode
         self.config = config
         self.mode = mode
@@ -68,7 +71,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         # Dataset dictionary
         self.image_list = []
         self.label_list = []
-        
+
         # Set the dataset dictionary based on the mode
         if mode == 'train':
             dataset_list = config['train_dataset']
@@ -79,54 +82,62 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 image_list.extend(tmp_image)
                 label_list.extend(tmp_label)
             if self.lmdb:
-                if len(dataset_list)>1:
-                    if all_in_pool(dataset_list,FFpp_pool):
-                        lmdb_path = os.path.join(config['lmdb_dir'], f"FaceForensics++_lmdb")
+                if len(dataset_list) > 1:
+                    if all_in_pool(dataset_list, FFpp_pool):
+                        lmdb_path = os.path.join(config['lmdb_dir'], f"DeepFakeFace_lmdb")
+                        print("lmdb_path: " + lmdb_path)
                         self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
                     else:
                         raise ValueError('Training with multiple dataset and lmdb is not implemented yet.')
                 else:
-                    lmdb_path = os.path.join(config['lmdb_dir'], f"{dataset_list[0] if dataset_list[0] not in FFpp_pool else 'FaceForensics++'}_lmdb")
+                    lmdb_path = os.path.join(config['lmdb_dir'],
+                                             f"{dataset_list[0] if dataset_list[0] not in FFpp_pool else 'FaceForensics++'}_lmdb")
+                    print("lmdb_path: " + lmdb_path)
                     self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
         elif mode == 'test':
             one_data = config['test_dataset']
             # Test dataset should be evaluated separately. So collect only one dataset each time
             image_list, label_list, name_list = self.collect_img_and_label_for_one_dataset(one_data)
             if self.lmdb:
-                lmdb_path = os.path.join(config['lmdb_dir'], f"{one_data}_lmdb" if one_data not in FFpp_pool else 'FaceForensics++_lmdb')
+                lmdb_path = os.path.join(config['lmdb_dir'],
+                                         f"{one_data}_lmdb" if one_data not in FFpp_pool else 'DeepFakeFace_lmdb')
                 self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
         else:
             raise NotImplementedError('Only train and test modes are supported.')
 
-        assert len(image_list)!=0 and len(label_list)!=0, f"Collect nothing for {mode} mode!"
+        assert len(image_list) != 0 and len(label_list) != 0, f"Collect nothing for {mode} mode!"
         self.image_list, self.label_list = image_list, label_list
-
 
         # Create a dictionary containing the image and label lists
         self.data_dict = {
-            'image': self.image_list, 
-            'label': self.label_list, 
+            'image': self.image_list,
+            'label': self.label_list,
         }
-        
+
         self.transform = self.init_data_aug_method()
-        
+
     def init_data_aug_method(self):
-        trans = A.Compose([           
+        trans = A.Compose([
             A.HorizontalFlip(p=self.config['data_aug']['flip_prob']),
             A.Rotate(limit=self.config['data_aug']['rotate_limit'], p=self.config['data_aug']['rotate_prob']),
             A.GaussianBlur(blur_limit=self.config['data_aug']['blur_limit'], p=self.config['data_aug']['blur_prob']),
-            A.OneOf([                
-                IsotropicResize(max_side=self.config['resolution'], interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_CUBIC),
-                IsotropicResize(max_side=self.config['resolution'], interpolation_down=cv2.INTER_AREA, interpolation_up=cv2.INTER_LINEAR),
-                IsotropicResize(max_side=self.config['resolution'], interpolation_down=cv2.INTER_LINEAR, interpolation_up=cv2.INTER_LINEAR),
-            ], p = 0 if self.config['with_landmark'] else 1),
             A.OneOf([
-                A.RandomBrightnessContrast(brightness_limit=self.config['data_aug']['brightness_limit'], contrast_limit=self.config['data_aug']['contrast_limit']),
+                IsotropicResize(max_side=self.config['resolution'], interpolation_down=cv2.INTER_AREA,
+                                interpolation_up=cv2.INTER_CUBIC),
+                IsotropicResize(max_side=self.config['resolution'], interpolation_down=cv2.INTER_AREA,
+                                interpolation_up=cv2.INTER_LINEAR),
+                IsotropicResize(max_side=self.config['resolution'], interpolation_down=cv2.INTER_LINEAR,
+                                interpolation_up=cv2.INTER_LINEAR),
+            ], p=0 if self.config['with_landmark'] else 1),
+            A.OneOf([
+                A.RandomBrightnessContrast(brightness_limit=self.config['data_aug']['brightness_limit'],
+                                           contrast_limit=self.config['data_aug']['contrast_limit']),
                 A.FancyPCA(),
                 A.HueSaturationValue()
             ], p=0.5),
-            A.ImageCompression(quality_lower=self.config['data_aug']['quality_lower'], quality_upper=self.config['data_aug']['quality_upper'], p=0.5)
-        ], 
+            A.ImageCompression(quality_lower=self.config['data_aug']['quality_lower'],
+                               quality_upper=self.config['data_aug']['quality_upper'], p=0.5)
+        ],
             keypoint_params=A.KeypointParams(format='xy') if self.config['with_landmark'] else None
         )
         return trans
@@ -135,7 +146,6 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         scale_factor = new_size / original_size
         rescaled_landmarks = landmarks * scale_factor
         return rescaled_landmarks
-
 
     def collect_img_and_label_for_one_dataset(self, dataset_name: str):
         """Collects image and label lists.
@@ -146,7 +156,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         Returns:
             list: A list of image paths.
             list: A list of labels.
-        
+
         Raises:
             ValueError: If image paths or labels are not found.
             NotImplementedError: If the dataset is not implemented yet.
@@ -154,13 +164,14 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         # Initialize the label and frame path lists
         label_list = []
         frame_path_list = []
-        
+
         # Record video name for video-level metrics
-        video_name_list = []
+        image_name_list = []
 
         # Try to get the dataset information from the JSON file
         if not os.path.exists(self.config['dataset_json_folder']):
-            self.config['dataset_json_folder'] = self.config['dataset_json_folder'].replace('/Youtu_Pangu_Security_Public', '/Youtu_Pangu_Security/public')
+            self.config['dataset_json_folder'] = self.config['dataset_json_folder'].replace(
+                '/Youtu_Pangu_Security_Public', '/Youtu_Pangu_Security/public')
         try:
             with open(os.path.join(self.config['dataset_json_folder'], dataset_name + '.json'), 'r') as f:
                 dataset_info = json.load(f)
@@ -170,41 +181,41 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
         # If JSON file exists, do the following data collection
         # FIXME: ugly, need to be modified here.
-        cp = None
-        if dataset_name == 'FaceForensics++_c40':
-            dataset_name = 'FaceForensics++'
-            cp = 'c40'
-        elif dataset_name == 'FF-DF_c40':
-            dataset_name = 'FF-DF'
-            cp = 'c40'
-        elif dataset_name == 'FF-F2F_c40':
-            dataset_name = 'FF-F2F'
-            cp = 'c40'
-        elif dataset_name == 'FF-FS_c40':
-            dataset_name = 'FF-FS'
-            cp = 'c40'
-        elif dataset_name == 'FF-NT_c40':
-            dataset_name = 'FF-NT'
-            cp = 'c40'
+        # cp = None
+        # if dataset_name == 'FaceForensics++_c40':
+        #     dataset_name = 'FaceForensics++'
+        #     cp = 'c40'
+        # elif dataset_name == 'FF-DF_c40':
+        #     dataset_name = 'FF-DF'
+        #     cp = 'c40'
+        # elif dataset_name == 'FF-F2F_c40':
+        #     dataset_name = 'FF-F2F'
+        #     cp = 'c40'
+        # elif dataset_name == 'FF-FS_c40':
+        #     dataset_name = 'FF-FS'
+        #     cp = 'c40'
+        # elif dataset_name == 'FF-NT_c40':
+        #     dataset_name = 'FF-NT'
+        #     cp = 'c40'
         # Get the information for the current dataset
         for label in dataset_info[dataset_name]:
             sub_dataset_info = dataset_info[dataset_name][label][self.mode]
             # Special case for FaceForensics++ and DeepFakeDetection, choose the compression type
-            if cp == None and dataset_name in ['FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'FaceForensics++','DeepFakeDetection','FaceShifter']:
-                sub_dataset_info = sub_dataset_info[self.compression]
-            elif cp == 'c40' and dataset_name in ['FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'FaceForensics++','DeepFakeDetection','FaceShifter']:
-                sub_dataset_info = sub_dataset_info['c40']
+            # if cp == None and dataset_name in ['FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'FaceForensics++','DeepFakeDetection','FaceShifter']:
+            #     sub_dataset_info = sub_dataset_info[self.compression]
+            # elif cp == 'c40' and dataset_name in ['FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'FaceForensics++','DeepFakeDetection','FaceShifter']:
+            #     sub_dataset_info = sub_dataset_info['c40']
 
             # Iterate over the videos in the dataset
-            for video_name, video_info in sub_dataset_info.items():
+            for image_name, image_info in sub_dataset_info.items():
                 # Unique video name
-                unique_video_name = video_info['label'] + '_' + video_name
+                unique_image_name = image_info['label'] + '_' + image_name
 
                 # Get the label and frame paths for the current video
-                if video_info['label'] not in self.config['label_dict']:
-                    raise ValueError(f'Label {video_info["label"]} is not found in the configuration file.')
-                label = self.config['label_dict'][video_info['label']]
-                frame_paths = video_info['frames']
+                if image_info['label'] not in self.config['label_dict']:
+                    raise ValueError(f'Label {image_info["label"]} is not found in the configuration file.')
+                label = self.config['label_dict'][image_info['label']]
+                frame_paths = image_info['frames']
                 # sorted video path to the lists
                 # if '\\' in frame_paths[0]:
                 #     frame_paths = sorted(frame_paths, key=lambda x: int(x.split('\\')[-1].split('.')[0]))
@@ -214,17 +225,17 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 # Consider the case when the actual number of frames (e.g., 270) is larger than the specified (i.e., self.frame_num=32)
                 # In this case, we select self.frame_num frames from the original 270 frames
                 total_frames = len(frame_paths)
-                if self.frame_num < total_frames:
-                    total_frames = self.frame_num
-                    if self.video_level:
-                        # Select clip_size continuous frames
-                        start_frame = random.randint(0, total_frames - self.frame_num) if self.mode == 'train' else 0
-                        frame_paths = frame_paths[start_frame:start_frame + self.frame_num]  # update total_frames
-                    else:
-                        # Select self.frame_num frames evenly distributed throughout the video
-                        step = total_frames // self.frame_num
-                        frame_paths = [frame_paths[i] for i in range(0, total_frames, step)][:self.frame_num]
-                
+                # if self.frame_num < total_frames:
+                #     total_frames = self.frame_num
+                #     if self.video_level:
+                #         # Select clip_size continuous frames
+                #         start_frame = random.randint(0, total_frames - self.frame_num) if self.mode == 'train' else 0
+                #         frame_paths = frame_paths[start_frame:start_frame + self.frame_num]  # update total_frames
+                #     else:
+                #         # Select self.frame_num frames evenly distributed throughout the video
+                #         step = total_frames // self.frame_num
+                #         frame_paths = [frame_paths[i] for i in range(0, total_frames, step)][:self.frame_num]
+
                 # If video-level methods, crop clips from the selected frames if needed
                 if self.video_level:
                     if self.clip_size is None:
@@ -244,42 +255,46 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                             # Select clip_size continuous frames from each part of the video
                             for i in range(num_clips):
                                 # Ensure start_frame + self.clip_size - 1 does not exceed the index of the last frame
-                                start_frame = random.randrange(i * clip_step, min((i + 1) * clip_step, total_frames - self.clip_size + 1)) if self.mode == 'train' else i * clip_step
+                                start_frame = random.randrange(i * clip_step, min((i + 1) * clip_step,
+                                                                                  total_frames - self.clip_size + 1)) if self.mode == 'train' else i * clip_step
                                 continuous_frames = frame_paths[start_frame:start_frame + self.clip_size]
-                                assert len(continuous_frames) == self.clip_size, 'clip_size is not equal to the length of frame_path_list'
+                                assert len(
+                                    continuous_frames) == self.clip_size, 'clip_size is not equal to the length of frame_path_list'
                                 selected_clips.append(continuous_frames)
 
                         else:
-                            start_frame = random.randrange(0, total_frames - self.clip_size + 1) if self.mode == 'train' else 0
+                            start_frame = random.randrange(0,
+                                                           total_frames - self.clip_size + 1) if self.mode == 'train' else 0
                             continuous_frames = frame_paths[start_frame:start_frame + self.clip_size]
-                            assert len(continuous_frames)==self.clip_size, 'clip_size is not equal to the length of frame_path_list'
+                            assert len(
+                                continuous_frames) == self.clip_size, 'clip_size is not equal to the length of frame_path_list'
                             selected_clips.append(continuous_frames)
 
                         # Append the list of selected clips and append the label
                         label_list.extend([label] * len(selected_clips))
                         frame_path_list.extend(selected_clips)
                         # video name save
-                        video_name_list.extend([unique_video_name] * len(selected_clips))
+                        image_name_list.extend([unique_image_name] * len(selected_clips))
 
                     else:
-                        print(f"Skipping video {unique_video_name} because it has less than clip_size ({self.clip_size}) frames ({total_frames}).")
-                
+                        print(
+                            f"Skipping video {unique_image_name} because it has less than clip_size ({self.clip_size}) frames ({total_frames}).")
+
                 # Otherwise, extend the label and frame paths to the lists according to the number of frames
                 else:
                     # Extend the label and frame paths to the lists according to the number of frames
                     label_list.extend([label] * total_frames)
                     frame_path_list.extend(frame_paths)
                     # video name save
-                    video_name_list.extend([unique_video_name] * len(frame_paths))
-            
-        # Shuffle the label and frame path lists in the same order
-        shuffled = list(zip(label_list, frame_path_list, video_name_list))
-        random.shuffle(shuffled)
-        label_list, frame_path_list, video_name_list = zip(*shuffled)
-        
-        return frame_path_list, label_list, video_name_list
+                    image_name_list.extend([unique_image_name] * len(frame_paths))
 
-     
+        # Shuffle the label and frame path lists in the same order
+        shuffled = list(zip(label_list, frame_path_list, image_name_list))
+        random.shuffle(shuffled)
+        label_list, frame_path_list, image_name_list = zip(*shuffled)
+
+        return frame_path_list, label_list, image_name_list
+
     def load_rgb(self, file_path):
         """
         Load an RGB image from a file path and resize it to a specified resolution.
@@ -293,10 +308,10 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         Raises:
             ValueError: If the loaded image is None.
         """
-        size = self.config['resolution'] # if self.mode == "train" else self.config['resolution']
+        size = self.config['resolution']  # if self.mode == "train" else self.config['resolution']
         if not self.lmdb:
             if not file_path[0] == '.':
-                file_path =  f'./{self.config["rgb_dir"]}\\'+file_path
+                file_path = f'./{self.config["rgb_dir"]}\\' + file_path
             assert os.path.exists(file_path), f"{file_path} does not exist"
             img = cv2.imread(file_path)
             if img is None:
@@ -304,8 +319,8 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         elif self.lmdb:
             with self.env.begin(write=False) as txn:
                 # transfer the path format from rgb-path to lmdb-key
-                if file_path[0]=='.':
-                    file_path=file_path.replace('./datasets\\','')
+                # if file_path[0]=='.':
+                #     file_path=file_path.replace('./datasets\\','')
 
                 image_bin = txn.get(file_path.encode())
                 image_buf = np.frombuffer(image_bin, dtype=np.uint8)
@@ -313,7 +328,6 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
         return Image.fromarray(np.array(img, dtype=np.uint8))
-
 
     def load_mask(self, file_path):
         """
@@ -333,7 +347,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             return np.zeros((size, size, 1))
         if not self.lmdb:
             if not file_path[0] == '.':
-                file_path =  f'./{self.config["rgb_dir"]}\\'+file_path
+                file_path = f'./{self.config["rgb_dir"]}\\' + file_path
             if os.path.exists(file_path):
                 mask = cv2.imread(file_path, 0)
                 if mask is None:
@@ -343,12 +357,12 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         else:
             with self.env.begin(write=False) as txn:
                 # transfer the path format from rgb-path to lmdb-key
-                if file_path[0]=='.':
-                    file_path=file_path.replace('./datasets\\','')
+                if file_path[0] == '.':
+                    file_path = file_path.replace('./datasets\\', '')
 
                 image_bin = txn.get(file_path.encode())
                 if image_bin is None:
-                    mask = np.zeros((size, size,3))
+                    mask = np.zeros((size, size, 3))
                 else:
                     image_buf = np.frombuffer(image_bin, dtype=np.uint8)
                     # cv2.IMREAD_GRAYSCALE为灰度图，cv2.IMREAD_COLOR为彩色图
@@ -374,7 +388,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             return np.zeros((81, 2))
         if not self.lmdb:
             if not file_path[0] == '.':
-                file_path =  f'./{self.config["rgb_dir"]}\\'+file_path
+                file_path = f'./{self.config["rgb_dir"]}\\' + file_path
             if os.path.exists(file_path):
                 landmark = np.load(file_path)
             else:
@@ -382,11 +396,12 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         else:
             with self.env.begin(write=False) as txn:
                 # transfer the path format from rgb-path to lmdb-key
-                if file_path[0]=='.':
-                    file_path=file_path.replace('./datasets\\','')
+                if file_path[0] == '.':
+                    file_path = file_path.replace('./datasets\\', '')
                 binary = txn.get(file_path.encode())
                 landmark = np.frombuffer(binary, dtype=np.uint32).reshape((81, 2))
-                landmark=self.rescale_landmarks(np.float32(landmark), original_size=256, new_size=self.config['resolution'])
+                landmark = self.rescale_landmarks(np.float32(landmark), original_size=256,
+                                                  new_size=self.config['resolution'])
         return landmark
 
     def to_tensor(self, img):
@@ -421,10 +436,10 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         if augmentation_seed is not None:
             random.seed(augmentation_seed)
             np.random.seed(augmentation_seed)
-        
+
         # Create a dictionary of arguments
         kwargs = {'image': img}
-        
+
         # Check if the landmark and mask are not None
         if landmark is not None:
             kwargs['keypoints'] = landmark
@@ -436,11 +451,11 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
         # Apply data augmentation
         transformed = self.transform(**kwargs)
-        
+
         # Get the augmented image, landmark, and mask
         augmented_img = transformed['image']
         augmented_landmark = transformed.get('keypoints')
-        augmented_mask = transformed.get('mask',mask)
+        augmented_mask = transformed.get('mask', mask)
 
         # Convert the augmented landmark to a numpy array
         if augmented_landmark is not None:
@@ -466,6 +481,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         """
         # Get the image paths and label
         image_paths = self.data_dict['image'][index]
+        print("image paths: " + image_paths)
         label = self.data_dict['label'][index]
 
         if not isinstance(image_paths, list):
@@ -477,9 +493,11 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         augmentation_seed = None
 
         for image_path in image_paths:
+            print("image path: " + image_path)
+
             # Initialize a new seed for data augmentation at the start of each video
             if self.video_level and image_path == image_paths[0]:
-                augmentation_seed = random.randint(0, 2**32 - 1)
+                augmentation_seed = random.randint(0, 2 ** 32 - 1)
 
             # Get the mask and landmark paths
             mask_path = image_path.replace('frames', 'masks')  # Use .png for mask
@@ -509,7 +527,6 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 image_trans, landmarks_trans, mask_trans = self.data_aug(image, landmarks, mask, augmentation_seed)
             else:
                 image_trans, landmarks_trans, mask_trans = deepcopy(image), deepcopy(landmarks), deepcopy(mask)
-            
 
             # To tensor and normalize
             if not no_norm:
@@ -527,7 +544,8 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             # Stack image tensors along a new dimension (time)
             image_tensors = torch.stack(image_tensors, dim=0)
             # Stack landmark and mask tensors along a new dimension (time)
-            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in landmark_tensors):
+            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in
+                       landmark_tensors):
                 landmark_tensors = torch.stack(landmark_tensors, dim=0)
             if not any(m is None or (isinstance(m, list) and None in m) for m in mask_tensors):
                 mask_tensors = torch.stack(mask_tensors, dim=0)
@@ -535,13 +553,14 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             # Get the first image tensor
             image_tensors = image_tensors[0]
             # Get the first landmark and mask tensors
-            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in landmark_tensors):
+            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in
+                       landmark_tensors):
                 landmark_tensors = landmark_tensors[0]
             if not any(m is None or (isinstance(m, list) and None in m) for m in mask_tensors):
                 mask_tensors = mask_tensors[0]
 
         return image_tensors, label, landmark_tensors, mask_tensors
-    
+
     @staticmethod
     def collate_fn(batch):
         """
@@ -557,11 +576,11 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         """
         # Separate the image, label, landmark, and mask tensors
         images, labels, landmarks, masks = zip(*batch)
-        
+
         # Stack the image, label, landmark, and mask tensors
         images = torch.stack(images, dim=0)
         labels = torch.LongTensor(labels)
-        
+
         # Special case for landmarks and masks if they are None
         if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in landmarks):
             landmarks = torch.stack(landmarks, dim=0)
@@ -602,18 +621,19 @@ if __name__ == "__main__":
     with open('/content/DeepfakeBench/training/config/detector/xception.yaml', 'r') as f:
         config = yaml.safe_load(f)
     train_set = DeepfakeAbstractBaseDataset(
-                config = config,
-                mode = 'train', 
-            )
+        config=config,
+        mode='train',
+    )
     train_data_loader = \
         torch.utils.data.DataLoader(
             dataset=train_set,
             batch_size=config['train_batchSize'],
-            shuffle=True, 
+            shuffle=True,
             num_workers=0,
             collate_fn=train_set.collate_fn,
         )
     from tqdm import tqdm
+
     for iteration, batch in enumerate(tqdm(train_data_loader)):
         # print(iteration)
         ...
