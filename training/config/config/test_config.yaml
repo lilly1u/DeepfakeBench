@@ -2,7 +2,7 @@ mode: test
 lmdb: True
 dataset_root_rgb: './datasets'
 lmdb_dir:  'I:\transform_2_lmdb'
-dataset_json_folder: 'preprocessing/dataset_json_v3'
+dataset_json_folder: '/content/DeepfakeBench/preprocessing/dataset_json/DeepFakeFace.json'
 label_dict:
   # DFD
   DFD_fake: 1
@@ -36,3 +36,6 @@ label_dict:
   # Roop
   roop_Real: 0
   roop_Fake: 1
+  # DeepFakeFace
+  DeepFakeFace_Real: 0
+  DeepFakeFace_Fake: 1
