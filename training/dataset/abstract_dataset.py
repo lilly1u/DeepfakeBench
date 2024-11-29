@@ -206,10 +206,10 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 label = self.config['label_dict'][video_info['label']]
                 frame_paths = video_info['frames']
                 # sorted video path to the lists
-                if '\\' in frame_paths[0]:
-                    frame_paths = sorted(frame_paths, key=lambda x: int(x.split('\\')[-1].split('.')[0]))
-                else:
-                    frame_paths = sorted(frame_paths, key=lambda x: int(x.split('/')[-1].split('.')[0]))
+                # if '\\' in frame_paths[0]:
+                #     frame_paths = sorted(frame_paths, key=lambda x: int(x.split('\\')[-1].split('.')[0]))
+                # else:
+                #     frame_paths = sorted(frame_paths, key=lambda x: int(x.split('/')[-1].split('.')[0]))
 
                 # Consider the case when the actual number of frames (e.g., 270) is larger than the specified (i.e., self.frame_num=32)
                 # In this case, we select self.frame_num frames from the original 270 frames
