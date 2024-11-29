@@ -1,7 +1,7 @@
 mode: test
 lmdb: True
-dataset_root_rgb: './datasets'
-lmdb_dir:  'I:\transform_2_lmdb'
+dataset_root_rgb: '/content/DeepfakeBench/datasets/'
+lmdb_dir:  '/content/DeepfakeBench/datasets/lmdb/'
 dataset_json_folder: '/content/DeepfakeBench/preprocessing/dataset_json/DeepFakeFace.json'
 label_dict:
   # DFD

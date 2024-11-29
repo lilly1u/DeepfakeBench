@@ -9,7 +9,7 @@ sys.path.append(project_root_dir)
 
 # from .I2G_dataset import I2GDataset
 # from .iid_dataset import IIDDataset
-# from .abstract_dataset import DeepfakeAbstractBaseDataset
+from .abstract_dataset import DeepfakeAbstractBaseDataset
 # from .ff_blend import FFBlendDataset
 # from .fwa_blend import FWABlendDataset
 # from .lrl_dataset import LRLDataset

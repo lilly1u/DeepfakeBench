@@ -599,7 +599,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
 
 if __name__ == "__main__":
-    with open('/data/home/zhiyuanyan/DeepfakeBench/training/config/detector/video_baseline.yaml', 'r') as f:
+    with open('/content/DeepfakeBench/training/config/detector/xception.yaml', 'r') as f:
         config = yaml.safe_load(f)
     train_set = DeepfakeAbstractBaseDataset(
                 config = config,
