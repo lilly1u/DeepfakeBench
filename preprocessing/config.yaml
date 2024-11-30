@@ -43,7 +43,7 @@ to_lmdb:
     default: 'DeepFakeFace'
   dataset_root_path: # the root path to the dataset
     type: str
-    default: '/content/DeepfakeBench/datasets/rgb/'
+    default: '/content/DeepfakeBench/datasets/rgb'
   output_lmdb_dir: # the json path to the dataset
     type: str
     default: '/content/DeepfakeBench/datasets/lmdb'

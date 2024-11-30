@@ -31,8 +31,7 @@ import albumentations as A
 
 from .albu import IsotropicResize
 
-FFpp_pool = ['FaceForensics++', 'FaceShifter', 'DeepFakeDetection', 'FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT',
-             'DeepFakeFace']  #
+FFpp_pool = ['FaceForensics++', 'FaceShifter', 'DeepFakeDetection', 'FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'DeepFakeFace']  #
 
 
 def all_in_pool(inputs, pool):
@@ -61,12 +60,12 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         # Set the configuration and mode
         self.config = config
         self.mode = mode
-        self.compression = config['compression']
-        self.frame_num = config['frame_num'][mode]
+        # self.compression = config['compression']
+        self.frame_num = config['frame_num'][mode] # set to 1 in dataset config
 
         # Check if 'video_mode' exists in config, otherwise set video_level to False
-        self.video_level = config.get('video_mode', False)
-        self.clip_size = config.get('clip_size', None)
+        # self.video_level = config.get('video_mode', False)
+        # self.clip_size = config.get('clip_size', None)
         self.lmdb = config.get('lmdb', False)
         # Dataset dictionary
         self.image_list = []
@@ -78,29 +77,27 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             # Training data should be collected together for training
             image_list, label_list = [], []
             for one_data in dataset_list:
-                tmp_image, tmp_label, tmp_name = self.collect_img_and_label_for_one_dataset(one_data)
+                tmp_image, tmp_label = self.collect_img_and_label_for_one_dataset(one_data)
                 image_list.extend(tmp_image)
                 label_list.extend(tmp_label)
             if self.lmdb:
                 if len(dataset_list) > 1:
                     if all_in_pool(dataset_list, FFpp_pool):
-                        lmdb_path = os.path.join(config['lmdb_dir'], f"DeepFakeFace_lmdb")
-                        print("lmdb_path: " + lmdb_path)
+                        lmdb_path = os.path.join(config['lmdb_dir'], f"FaceForensics++_lmdb")
                         self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
                     else:
                         raise ValueError('Training with multiple dataset and lmdb is not implemented yet.')
                 else:
                     lmdb_path = os.path.join(config['lmdb_dir'],
                                              f"{dataset_list[0] if dataset_list[0] not in FFpp_pool else 'FaceForensics++'}_lmdb")
-                    print("lmdb_path: " + lmdb_path)
                     self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
         elif mode == 'test':
             one_data = config['test_dataset']
             # Test dataset should be evaluated separately. So collect only one dataset each time
-            image_list, label_list, name_list = self.collect_img_and_label_for_one_dataset(one_data)
+            image_list, label_list = self.collect_img_and_label_for_one_dataset(one_data)
             if self.lmdb:
                 lmdb_path = os.path.join(config['lmdb_dir'],
-                                         f"{one_data}_lmdb" if one_data not in FFpp_pool else 'DeepFakeFace_lmdb')
+                                         f"{one_data}_lmdb" if one_data not in FFpp_pool else 'FaceForensics++_lmdb')
                 self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
         else:
             raise NotImplementedError('Only train and test modes are supported.')
@@ -165,9 +162,6 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         label_list = []
         frame_path_list = []
 
-        # Record video name for video-level metrics
-        image_name_list = []
-
         # Try to get the dataset information from the JSON file
         if not os.path.exists(self.config['dataset_json_folder']):
             self.config['dataset_json_folder'] = self.config['dataset_json_folder'].replace(
@@ -179,121 +173,37 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             print(e)
             raise ValueError(f'dataset {dataset_name} not exist!')
 
-        # If JSON file exists, do the following data collection
-        # FIXME: ugly, need to be modified here.
-        # cp = None
-        # if dataset_name == 'FaceForensics++_c40':
-        #     dataset_name = 'FaceForensics++'
-        #     cp = 'c40'
-        # elif dataset_name == 'FF-DF_c40':
-        #     dataset_name = 'FF-DF'
-        #     cp = 'c40'
-        # elif dataset_name == 'FF-F2F_c40':
-        #     dataset_name = 'FF-F2F'
-        #     cp = 'c40'
-        # elif dataset_name == 'FF-FS_c40':
-        #     dataset_name = 'FF-FS'
-        #     cp = 'c40'
-        # elif dataset_name == 'FF-NT_c40':
-        #     dataset_name = 'FF-NT'
-        #     cp = 'c40'
+
         # Get the information for the current dataset
         for label in dataset_info[dataset_name]:
             sub_dataset_info = dataset_info[dataset_name][label][self.mode]
-            # Special case for FaceForensics++ and DeepFakeDetection, choose the compression type
-            # if cp == None and dataset_name in ['FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'FaceForensics++','DeepFakeDetection','FaceShifter']:
-            #     sub_dataset_info = sub_dataset_info[self.compression]
-            # elif cp == 'c40' and dataset_name in ['FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'FaceForensics++','DeepFakeDetection','FaceShifter']:
-            #     sub_dataset_info = sub_dataset_info['c40']
 
             # Iterate over the videos in the dataset
-            for image_name, image_info in sub_dataset_info.items():
+            for video_name, video_info in sub_dataset_info.items():
                 # Unique video name
-                unique_image_name = image_info['label'] + '_' + image_name
+                unique_video_name = video_info['label'] + '_' + video_name
 
                 # Get the label and frame paths for the current video
-                if image_info['label'] not in self.config['label_dict']:
-                    raise ValueError(f'Label {image_info["label"]} is not found in the configuration file.')
-                label = self.config['label_dict'][image_info['label']]
-                frame_paths = image_info['frames']
+                if video_info['label'] not in self.config['label_dict']:
+                    raise ValueError(f'Label {video_info["label"]} is not found in the configuration file.')
+                label = self.config['label_dict'][video_info['label']]
+                frame_paths = video_info['frames']
                 # sorted video path to the lists
-                # if '\\' in frame_paths[0]:
-                #     frame_paths = sorted(frame_paths, key=lambda x: int(x.split('\\')[-1].split('.')[0]))
-                # else:
-                #     frame_paths = sorted(frame_paths, key=lambda x: int(x.split('/')[-1].split('.')[0]))
-
-                # Consider the case when the actual number of frames (e.g., 270) is larger than the specified (i.e., self.frame_num=32)
-                # In this case, we select self.frame_num frames from the original 270 frames
-                total_frames = len(frame_paths)
-                # if self.frame_num < total_frames:
-                #     total_frames = self.frame_num
-                #     if self.video_level:
-                #         # Select clip_size continuous frames
-                #         start_frame = random.randint(0, total_frames - self.frame_num) if self.mode == 'train' else 0
-                #         frame_paths = frame_paths[start_frame:start_frame + self.frame_num]  # update total_frames
-                #     else:
-                #         # Select self.frame_num frames evenly distributed throughout the video
-                #         step = total_frames // self.frame_num
-                #         frame_paths = [frame_paths[i] for i in range(0, total_frames, step)][:self.frame_num]
-
-                # If video-level methods, crop clips from the selected frames if needed
-                if self.video_level:
-                    if self.clip_size is None:
-                        raise ValueError('clip_size must be specified when video_level is True.')
-                    # Check if the number of total frames is greater than or equal to clip_size
-                    if total_frames >= self.clip_size:
-                        # Initialize an empty list to store the selected continuous frames
-                        selected_clips = []
-
-                        # Calculate the number of clips to select
-                        num_clips = total_frames // self.clip_size
-
-                        if num_clips > 1:
-                            # Calculate the step size between each clip
-                            clip_step = (total_frames - self.clip_size) // (num_clips - 1)
-
-                            # Select clip_size continuous frames from each part of the video
-                            for i in range(num_clips):
-                                # Ensure start_frame + self.clip_size - 1 does not exceed the index of the last frame
-                                start_frame = random.randrange(i * clip_step, min((i + 1) * clip_step,
-                                                                                  total_frames - self.clip_size + 1)) if self.mode == 'train' else i * clip_step
-                                continuous_frames = frame_paths[start_frame:start_frame + self.clip_size]
-                                assert len(
-                                    continuous_frames) == self.clip_size, 'clip_size is not equal to the length of frame_path_list'
-                                selected_clips.append(continuous_frames)
-
-                        else:
-                            start_frame = random.randrange(0,
-                                                           total_frames - self.clip_size + 1) if self.mode == 'train' else 0
-                            continuous_frames = frame_paths[start_frame:start_frame + self.clip_size]
-                            assert len(
-                                continuous_frames) == self.clip_size, 'clip_size is not equal to the length of frame_path_list'
-                            selected_clips.append(continuous_frames)
-
-                        # Append the list of selected clips and append the label
-                        label_list.extend([label] * len(selected_clips))
-                        frame_path_list.extend(selected_clips)
-                        # video name save
-                        image_name_list.extend([unique_image_name] * len(selected_clips))
-
-                    else:
-                        print(
-                            f"Skipping video {unique_image_name} because it has less than clip_size ({self.clip_size}) frames ({total_frames}).")
-
-                # Otherwise, extend the label and frame paths to the lists according to the number of frames
+                if '\\' in frame_paths[0]:
+                    frame_paths = sorted(frame_paths, key=lambda x: int(x.split('\\')[-1].split('.')[0]))
                 else:
-                    # Extend the label and frame paths to the lists according to the number of frames
-                    label_list.extend([label] * total_frames)
-                    frame_path_list.extend(frame_paths)
-                    # video name save
-                    image_name_list.extend([unique_image_name] * len(frame_paths))
+                    frame_paths = sorted(frame_paths, key=lambda x: int(x.split('/')[-1].split('.')[0]))
+
+                # Extend the label and frame paths to the lists according to the number of frames
+                label_list.extend([label] * 1)
+                frame_path_list.extend(frame_paths)
 
         # Shuffle the label and frame path lists in the same order
-        shuffled = list(zip(label_list, frame_path_list, image_name_list))
+        shuffled = list(zip(label_list, frame_path_list))
         random.shuffle(shuffled)
-        label_list, frame_path_list, image_name_list = zip(*shuffled)
+        label_list, frame_path_list = zip(*shuffled)
 
-        return frame_path_list, label_list, image_name_list
+        return frame_path_list, label_list
 
     def load_rgb(self, file_path):
         """
@@ -311,7 +221,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         size = self.config['resolution']  # if self.mode == "train" else self.config['resolution']
         if not self.lmdb:
             if not file_path[0] == '.':
-                file_path = f'./{self.config["rgb_dir"]}\\' + file_path
+                file_path = f'{self.config["rgb_dir"]}' + file_path
             assert os.path.exists(file_path), f"{file_path} does not exist"
             img = cv2.imread(file_path)
             if img is None:
@@ -319,8 +229,8 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         elif self.lmdb:
             with self.env.begin(write=False) as txn:
                 # transfer the path format from rgb-path to lmdb-key
-                # if file_path[0]=='.':
-                #     file_path=file_path.replace('./datasets\\','')
+                if file_path[0] == '.':
+                    file_path = file_path.replace('./datasets\\', '')
 
                 image_bin = txn.get(file_path.encode())
                 image_buf = np.frombuffer(image_bin, dtype=np.uint8)
@@ -347,7 +257,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             return np.zeros((size, size, 1))
         if not self.lmdb:
             if not file_path[0] == '.':
-                file_path = f'./{self.config["rgb_dir"]}\\' + file_path
+                file_path = f'{self.config["rgb_dir"]}' + file_path
             if os.path.exists(file_path):
                 mask = cv2.imread(file_path, 0)
                 if mask is None:
@@ -388,7 +298,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             return np.zeros((81, 2))
         if not self.lmdb:
             if not file_path[0] == '.':
-                file_path = f'./{self.config["rgb_dir"]}\\' + file_path
+                file_path = f'{self.config["rgb_dir"]}' + file_path
             if os.path.exists(file_path):
                 landmark = np.load(file_path)
             else:
@@ -481,7 +391,6 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         """
         # Get the image paths and label
         image_paths = self.data_dict['image'][index]
-        print("image paths: " + image_paths)
         label = self.data_dict['label'][index]
 
         if not isinstance(image_paths, list):
@@ -493,11 +402,6 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         augmentation_seed = None
 
         for image_path in image_paths:
-            print("image path: " + image_path)
-
-            # Initialize a new seed for data augmentation at the start of each video
-            if self.video_level and image_path == image_paths[0]:
-                augmentation_seed = random.randint(0, 2 ** 32 - 1)
 
             # Get the mask and landmark paths
             mask_path = image_path.replace('frames', 'masks')  # Use .png for mask
@@ -540,24 +444,14 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             landmark_tensors.append(landmarks_trans)
             mask_tensors.append(mask_trans)
 
-        if self.video_level:
-            # Stack image tensors along a new dimension (time)
-            image_tensors = torch.stack(image_tensors, dim=0)
-            # Stack landmark and mask tensors along a new dimension (time)
-            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in
-                       landmark_tensors):
-                landmark_tensors = torch.stack(landmark_tensors, dim=0)
-            if not any(m is None or (isinstance(m, list) and None in m) for m in mask_tensors):
-                mask_tensors = torch.stack(mask_tensors, dim=0)
-        else:
-            # Get the first image tensor
-            image_tensors = image_tensors[0]
-            # Get the first landmark and mask tensors
-            if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in
-                       landmark_tensors):
-                landmark_tensors = landmark_tensors[0]
-            if not any(m is None or (isinstance(m, list) and None in m) for m in mask_tensors):
-                mask_tensors = mask_tensors[0]
+        # Get the first image tensor
+        image_tensors = image_tensors[0]
+        # Get the first landmark and mask tensors
+        if not any(landmark is None or (isinstance(landmark, list) and None in landmark) for landmark in
+                   landmark_tensors):
+            landmark_tensors = landmark_tensors[0]
+        if not any(m is None or (isinstance(m, list) and None in m) for m in mask_tensors):
+            mask_tensors = mask_tensors[0]
 
         return image_tensors, label, landmark_tensors, mask_tensors
 
@@ -618,7 +512,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
 
 if __name__ == "__main__":
-    with open('/content/DeepfakeBench/training/config/detector/xception.yaml', 'r') as f:
+    with open('/data/home/zhiyuanyan/DeepfakeBench/training/config/detector/video_baseline.yaml', 'r') as f:
         config = yaml.safe_load(f)
     train_set = DeepfakeAbstractBaseDataset(
         config=config,
