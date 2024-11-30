@@ -4,6 +4,7 @@
 # description: Abstract Base Class for all types of deepfake datasets.
 
 import sys
+from cv2.gapi import video
 
 import lmdb
 
@@ -77,19 +78,20 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             # Training data should be collected together for training
             image_list, label_list = [], []
             for one_data in dataset_list:
+                print("We will cry, plz run: ", one_data)
                 tmp_image, tmp_label = self.collect_img_and_label_for_one_dataset(one_data)
                 image_list.extend(tmp_image)
                 label_list.extend(tmp_label)
             if self.lmdb:
                 if len(dataset_list) > 1:
                     if all_in_pool(dataset_list, FFpp_pool):
-                        lmdb_path = os.path.join(config['lmdb_dir'], f"FaceForensics++_lmdb")
+                        lmdb_path = os.path.join(config['lmdb_dir'], f"DeepFakeFace_lmdb")
                         self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
                     else:
                         raise ValueError('Training with multiple dataset and lmdb is not implemented yet.')
                 else:
                     lmdb_path = os.path.join(config['lmdb_dir'],
-                                             f"{dataset_list[0] if dataset_list[0] not in FFpp_pool else 'FaceForensics++'}_lmdb")
+                                             f"{dataset_list[0] if dataset_list[0] not in FFpp_pool else 'DeepFakeFace'}_lmdb")
                     self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
         elif mode == 'test':
             one_data = config['test_dataset']
@@ -97,7 +99,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             image_list, label_list = self.collect_img_and_label_for_one_dataset(one_data)
             if self.lmdb:
                 lmdb_path = os.path.join(config['lmdb_dir'],
-                                         f"{one_data}_lmdb" if one_data not in FFpp_pool else 'FaceForensics++_lmdb')
+                                         f"{one_data}_lmdb" if one_data not in FFpp_pool else 'DeepFakeFace_lmdb')
                 self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
         else:
             raise NotImplementedError('Only train and test modes are supported.')
@@ -176,8 +178,10 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
         # Get the information for the current dataset
         for label in dataset_info[dataset_name]:
+            print("Originally wanted label: ", label)
+            print("Bababoowie: ", self.mode)
             sub_dataset_info = dataset_info[dataset_name][label][self.mode]
-
+            print("Here's a label in line 178: ", sub_dataset_info)
             # Iterate over the videos in the dataset
             for video_name, video_info in sub_dataset_info.items():
                 # Unique video name
@@ -188,15 +192,19 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                     raise ValueError(f'Label {video_info["label"]} is not found in the configuration file.')
                 label = self.config['label_dict'][video_info['label']]
                 frame_paths = video_info['frames']
+
                 # sorted video path to the lists
-                if '\\' in frame_paths[0]:
-                    frame_paths = sorted(frame_paths, key=lambda x: int(x.split('\\')[-1].split('.')[0]))
-                else:
-                    frame_paths = sorted(frame_paths, key=lambda x: int(x.split('/')[-1].split('.')[0]))
+                # if '\\' in frame_paths[0]:
+                #     frame_paths = sorted(frame_paths, key=lambda x: int(x.split('\\')[-1].split('.')[0]))
+                # else:
+                #     frame_paths = sorted(frame_paths, key=lambda x: int(x.split('/')[-1].split('.')[0]))
 
                 # Extend the label and frame paths to the lists according to the number of frames
                 label_list.extend([label] * 1)
-                frame_path_list.extend(frame_paths)
+                frame_path_list.extend([frame_paths])
+
+                # print("Listen up y'all:", frame_path_list)
+                # print("Cuz this is sick!", label_list)
 
         # Shuffle the label and frame path lists in the same order
         shuffled = list(zip(label_list, frame_path_list))
@@ -218,6 +226,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         Raises:
             ValueError: If the loaded image is None.
         """
+        # print("Are we here yet?", file_path)
         size = self.config['resolution']  # if self.mode == "train" else self.config['resolution']
         if not self.lmdb:
             if not file_path[0] == '.':
@@ -389,6 +398,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             A tuple containing the image tensor, the label tensor, the landmark tensor,
             and the mask tensor.
         """
+        # print("This is the data dictionary: ", self.data_dict)
         # Get the image paths and label
         image_paths = self.data_dict['image'][index]
         label = self.data_dict['label'][index]
@@ -401,8 +411,9 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         mask_tensors = []
         augmentation_seed = None
 
-        for image_path in image_paths:
+        # print("This is our path!: ", image_paths)
 
+        for image_path in image_paths:
             # Get the mask and landmark paths
             mask_path = image_path.replace('frames', 'masks')  # Use .png for mask
             landmark_path = image_path.replace('frames', 'landmarks').replace('.png', '.npy')  # Use .npy for landmark
@@ -412,7 +423,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 image = self.load_rgb(image_path)
             except Exception as e:
                 # Skip this image and return the first one
-                print(f"Error loading image at index {index}: {e}")
+                # print(f"Error loading image at index {index}: {e}")
                 return self.__getitem__(0)
             image = np.array(image)  # Convert to numpy array for data augmentation
 
@@ -469,7 +480,14 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             and the mask tensor.
         """
         # Separate the image, label, landmark, and mask tensors
-        images, labels, landmarks, masks = zip(*batch)
+        
+        images, labels, landmarks, mask = zip(*batch)
+
+        print("this is the images from god knows where: ", images)
+        print("this is the label #swag", labels)
+        print("mount rushmore!?! Yes!: ", landmarks)
+        print("covid19, #rip2020: ", mask)
+
 
         # Stack the image, label, landmark, and mask tensors
         images = torch.stack(images, dim=0)
