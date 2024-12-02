@@ -36,8 +36,8 @@ def get_test_metrics(y_pred, y_true, img_names):
         # print(pred.shape)
         # print(label.shape)
         for item in np.transpose(np.stack((image, pred, label)), (1, 0)):
-
             s = item[0]
+
             if '\\' in s:
                 parts = s.split('\\')
             else:
@@ -45,10 +45,10 @@ def get_test_metrics(y_pred, y_true, img_names):
             a = parts[-2]
             b = parts[-1]
 
-            if a not in result_dict:
-                result_dict[a] = []
+            if b not in result_dict:
+                result_dict[b] = []
 
-            result_dict[a].append(item)
+            result_dict[b].append(item)
         image_arr = list(result_dict.values())
 
         for video in image_arr:
