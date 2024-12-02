@@ -77,12 +77,15 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         if mode == 'train':
             dataset_list = config['train_dataset']
             # Training data should be collected together for training
+            print("Dataset list: ", dataset_list)
             image_list, label_list = [], []
             for one_data in dataset_list:
-                print("We will cry, plz run: ", one_data)
+                print("One of the data in dataset_list", one_data)
                 tmp_image, tmp_label = self.collect_img_and_label_for_one_dataset(one_data)
                 image_list.extend(tmp_image)
+                print("Image list: ", image_list)
                 label_list.extend(tmp_label)
+                print("Image list: ", label_list)
             if self.lmdb:
                 if len(dataset_list) > 1:
                     if all_in_pool(dataset_list, FFpp_pool):
@@ -93,6 +96,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 else:
                     lmdb_path = os.path.join(config['lmdb_dir'],
                                              f"{dataset_list[0] if dataset_list[0] not in FFpp_pool else 'DeepFakeFace'}_lmdb")
+                    print("lmdb path: ", lmdb_path)
                     self.env = lmdb.open(lmdb_path, create=False, subdir=True, readonly=True, lock=False)
         elif mode == 'test':
             one_data = config['test_dataset']
@@ -389,7 +393,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
     def __getitem__(self, index, no_norm=False):
         """
-        Returns the data point at the given index.  
+        Returns the data point at the given index.
 
         Args:
             index (int): The index of the data point.
@@ -481,12 +485,12 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         """
         # Separate the image, label, landmark, and mask tensors
 
-        images, labels, landmarks, mask = zip(*batch)
+        images, labels, landmarks, masks = zip(*batch)
 
-        print("this is the images from god knows where: ", images)
-        print("this is the label #swag", labels)
-        print("mount rushmore!?! Yes!: ", landmarks)
-        print("covid19, #rip2020: ", mask)
+        # print("Collate_fn Images: ", images)
+        # print("Collate_fn Labels: ", labels)
+        # print("Collate_fn Landmarks: : ", landmarks)
+        # print("Collate_fn Mask: ", masks)
 
         # Stack the image, label, landmark, and mask tensors
         images = torch.stack(images, dim=0)
