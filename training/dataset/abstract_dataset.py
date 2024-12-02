@@ -318,7 +318,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 if file_path[0] == '.':
                     file_path = file_path.replace('./datasets\\', '')
                 binary = txn.get(file_path.encode())
-                landmark = np.frombuffer(binary, dtype=np.uint32).reshape((81, 2))
+                landmark = np.frombuffer(binary, dtype=np.uint64).reshape((81, 2))
                 landmark = self.rescale_landmarks(np.float32(landmark), original_size=256,
                                                   new_size=self.config['resolution'])
         return landmark
