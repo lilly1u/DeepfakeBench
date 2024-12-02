@@ -32,7 +32,8 @@ import albumentations as A
 
 from .albu import IsotropicResize
 
-FFpp_pool = ['FaceForensics++', 'FaceShifter', 'DeepFakeDetection', 'FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT', 'DeepFakeFace']  #
+FFpp_pool = ['FaceForensics++', 'FaceShifter', 'DeepFakeDetection', 'FF-DF', 'FF-F2F', 'FF-FS', 'FF-NT',
+             'DeepFakeFace']  #
 
 
 def all_in_pool(inputs, pool):
@@ -62,7 +63,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         self.config = config
         self.mode = mode
         # self.compression = config['compression']
-        self.frame_num = config['frame_num'][mode] # set to 1 in dataset config
+        self.frame_num = config['frame_num'][mode]  # set to 1 in dataset config
 
         # Check if 'video_mode' exists in config, otherwise set video_level to False
         # self.video_level = config.get('video_mode', False)
@@ -175,13 +176,12 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             print(e)
             raise ValueError(f'dataset {dataset_name} not exist!')
 
-
         # Get the information for the current dataset
         for label in dataset_info[dataset_name]:
-            print("Originally wanted label: ", label)
-            print("Bababoowie: ", self.mode)
+            # print("Originally wanted label: ", label)
+            # print("Bababoowie: ", self.mode)
             sub_dataset_info = dataset_info[dataset_name][label][self.mode]
-            print("Here's a label in line 178: ", sub_dataset_info)
+            # print("Here's a label in line 178: ", sub_dataset_info)
             # Iterate over the videos in the dataset
             for video_name, video_info in sub_dataset_info.items():
                 # Unique video name
@@ -226,7 +226,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         Raises:
             ValueError: If the loaded image is None.
         """
-        # print("Are we here yet?", file_path)
+
         size = self.config['resolution']  # if self.mode == "train" else self.config['resolution']
         if not self.lmdb:
             if not file_path[0] == '.':
@@ -238,8 +238,8 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         elif self.lmdb:
             with self.env.begin(write=False) as txn:
                 # transfer the path format from rgb-path to lmdb-key
-                if file_path[0] == '.':
-                    file_path = file_path.replace('./datasets\\', '')
+                if file_path[0] == '/':
+                    file_path = file_path.replace('/content/DeepfakeBench/datasets/rgb/', '')
 
                 image_bin = txn.get(file_path.encode())
                 image_buf = np.frombuffer(image_bin, dtype=np.uint8)
@@ -276,8 +276,8 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         else:
             with self.env.begin(write=False) as txn:
                 # transfer the path format from rgb-path to lmdb-key
-                if file_path[0] == '.':
-                    file_path = file_path.replace('./datasets\\', '')
+                if file_path[0] == '/':
+                    file_path = file_path.replace('/content/DeepfakeBench/datasets/rgb/', '')
 
                 image_bin = txn.get(file_path.encode())
                 if image_bin is None:
@@ -315,8 +315,8 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
         else:
             with self.env.begin(write=False) as txn:
                 # transfer the path format from rgb-path to lmdb-key
-                if file_path[0] == '.':
-                    file_path = file_path.replace('./datasets\\', '')
+                if file_path[0] == '/':
+                    file_path = file_path.replace('/content/DeepfakeBench/datasets/rgb/', '')
                 binary = txn.get(file_path.encode())
                 landmark = np.frombuffer(binary, dtype=np.uint64).reshape((81, 2))
                 landmark = self.rescale_landmarks(np.float32(landmark), original_size=256,
@@ -389,7 +389,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
     def __getitem__(self, index, no_norm=False):
         """
-        Returns the data point at the given index.
+        Returns the data point at the given index.  
 
         Args:
             index (int): The index of the data point.
@@ -423,7 +423,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
                 image = self.load_rgb(image_path)
             except Exception as e:
                 # Skip this image and return the first one
-                # print(f"Error loading image at index {index}: {e}")
+                print(f"Error loading image at index {index}: {e}")
                 return self.__getitem__(0)
             image = np.array(image)  # Convert to numpy array for data augmentation
 
@@ -480,14 +480,13 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
             and the mask tensor.
         """
         # Separate the image, label, landmark, and mask tensors
-        
+
         images, labels, landmarks, mask = zip(*batch)
 
         print("this is the images from god knows where: ", images)
         print("this is the label #swag", labels)
         print("mount rushmore!?! Yes!: ", landmarks)
         print("covid19, #rip2020: ", mask)
-
 
         # Stack the image, label, landmark, and mask tensors
         images = torch.stack(images, dim=0)
@@ -530,7 +529,7 @@ class DeepfakeAbstractBaseDataset(data.Dataset):
 
 
 if __name__ == "__main__":
-    with open('/data/home/zhiyuanyan/DeepfakeBench/training/config/detector/video_baseline.yaml', 'r') as f:
+    with open('/content/DeepfakeBench/training/config/detector/xception.yaml', 'r') as f:
         config = yaml.safe_load(f)
     train_set = DeepfakeAbstractBaseDataset(
         config=config,
