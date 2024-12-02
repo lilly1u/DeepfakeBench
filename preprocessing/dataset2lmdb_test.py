@@ -52,19 +52,24 @@ def read_lmdb(lmdb_dir_path):
     idx = '%09d' % 5
     with env.begin(write=False) as txn:
         # key for validation
-        key = 'DeepFakeFace/insight/landmarks/4044212_1980-04-01_2004.npy'
+        key = 'DeepFakeFace/insight/landmarks/1247516_1960-03-21_2006.npy'
+        key2 = 'DeepFakeFace/insight/frames/1679045_1962-01-19_2005.png'
         if txn.get(key.encode()) is not None:  # Check if value exists for the key
-          binary = txn.get(key.encode())
-          print(binary)
-          print(type(binary))
-          data = np.frombuffer(binary, dtype=np.int64).reshape((81, 2))
-        else:
-          print(f"Key '{key}' not found or has no associated value in the database.")
-        # Handle the case where the key or its value is not found
+            # Test for .npy
+            binary = txn.get(key.encode())
+            print(binary)
+            print(type(binary))
+            data = np.frombuffer(binary, dtype=np.int64).reshape((81, 2))
 
-        # image_buf = np.frombuffer(image_bin, dtype=np.uint8)
-        # img = cv2.imdecode(image_buf, cv2.IMREAD_COLOR)
-        # image = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            # Test for images
+            image_bin = txn.get(key2.encode())
+            image_buf = np.frombuffer(image_bin, dtype=np.uint8)
+            img = cv2.imdecode(image_buf, cv2.IMREAD_COLOR)
+            image = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            print("Validation Complete")
+        else:
+            print(f"Key '{key}' not found or has no associated value in the database.")
+            # Handle the case where the key or its value is not found
 
 
 # 使用示例
@@ -99,4 +104,4 @@ if __name__ == '__main__':
     dataset_dir_path = f"{dataset_root_path}/{dataset_name}"
     lmdb_path = f"{output_lmdb_dir}/{dataset_name}_lmdb"
     create_lmdb_dataset(dataset_dir_path, lmdb_path, dataset_name, map_size=int(dataset_size) * 1024 * 1024 * 1024)
-    read_lmdb(lmdb_path)
+    # read_lmdb(lmdb_path)
