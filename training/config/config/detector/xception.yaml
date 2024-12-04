@@ -1,5 +1,5 @@
 # log dir 
-log_dir: /data/home/zhiyuanyan/DeepfakeBench/logs/testing_bench
+log_dir: /content/DeepfakeBench/logs/testing_bench
 
 # model setting
 pretrained: /content/DeepfakeBench/training/pretrained/pretrained/xception-b5690688.pth   # path to a pre-trained model, if using one
