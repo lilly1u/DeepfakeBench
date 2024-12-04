@@ -60,6 +60,8 @@ import cv2
 import json
 import yaml
 import pandas as pd
+import random
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -516,25 +518,30 @@ def generate_dataset_file(dataset_name, dataset_root_path, output_file_path, com
     ## DeepFakeFace dataset
     elif dataset_name == 'DeepFakeFace':
         dataset_path = os.path.join(dataset_root_path, dataset_name)
-        dataset_dict[dataset_name] = {'DeepFakeFace_Real': {'train': {}, 'test': {}, 'val': {}},
-                                      'DeepFakeFace_Fake': {'train': {}, 'test': {}, 'val': {}}}
         for folder in os.scandir(dataset_path):
             if not os.path.isdir(folder):
                 continue
-            elif folder.name in ['inpainting', 'insight', 'text2img']:
-                for image_path in os.scandir(os.path.join(dataset_path, folder.name, 'frames')):
+            elif folder.name in ['inpainting', 'insight', 'text2img', 'wiki']:
+                images = list(os.scandir(os.path.join(dataset_path, folder.name, 'frames')))
+                random.shuffle(images)  # Shuffle images randomly
+
+                num_images = len(images)
+                train_split = int(0.8 * num_images)
+                val_split = int(0.9 * num_images)
+
+                label = 'DeepFakeFace_Fake' if folder.name in ['inpainting', 'insight',
+                                                               'text2img'] else 'DeepFakeFace_Real'
+
+                for i, image_path in enumerate(images):
                     image_name = str(image_path.name)
-                    label = 'DeepFakeFace_Fake'
-                    dataset_dict[dataset_name][label]['train'][image_name] = {'label': label, 'frames': image_path.path}
-                    dataset_dict[dataset_name][label]['test'][image_name] = {'label': label, 'frames': image_path.path}
-                    dataset_dict[dataset_name][label]['val'][image_name] = {'label': label, 'frames': image_path.path}
-            elif folder.name in ['wiki']:
-                for image_path in os.scandir(os.path.join(dataset_path, folder.name, 'frames')):
-                    image_name = str(image_path.name)
-                    label = 'DeepFakeFace_Real'
-                    dataset_dict[dataset_name][label]['train'][image_name] = {'label': label, 'frames': image_path.path}
-                    dataset_dict[dataset_name][label]['test'][image_name] = {'label': label, 'frames': image_path.path}
-                    dataset_dict[dataset_name][label]['val'][image_name] = {'label': label, 'frames': image_path.path}
+                    if i < train_split:
+                        split = 'train'
+                    elif i < val_split:
+                        split = 'val'
+                    else:
+                        split = 'test'
+                    dataset_dict[dataset_name][label][split][image_name] = {'label': label, 'frames': image_path.path}
+
 
     # Convert the dataset dictionary to JSON format and save to file
     output_file_path = os.path.join(output_file_path, dataset_name + '.json')
