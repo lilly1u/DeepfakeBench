@@ -61,7 +61,6 @@ import json
 import yaml
 import pandas as pd
 import random
-from collections import defaultdict
 from pathlib import Path
 
 
@@ -518,6 +517,9 @@ def generate_dataset_file(dataset_name, dataset_root_path, output_file_path, com
     ## DeepFakeFace dataset
     elif dataset_name == 'DeepFakeFace':
         dataset_path = os.path.join(dataset_root_path, dataset_name)
+        dataset_dict[dataset_name] = {'DeepFakeFace_Real': {'train': {}, 'test': {}, 'val': {}},
+                                      'DeepFakeFace_Fake': {'train': {}, 'test': {}, 'val': {}}}
+
         for folder in os.scandir(dataset_path):
             if not os.path.isdir(folder):
                 continue
