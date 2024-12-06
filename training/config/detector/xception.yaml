@@ -19,9 +19,9 @@ train_dataset: [DeepFakeFace]
 test_dataset: [DeepFakeFace]
 
 compression: c23  # compression-level for videos
-train_batchSize: 2   # training batch size
-test_batchSize: 2   # test batch size
-workers: 2   # number of data loading workers
+train_batchSize: 32   # training batch size
+test_batchSize: 32   # test batch size
+workers: 8   # number of data loading workers
 frame_num: {'train': 1, 'test': 1}   # number of frames to use per video in training and testing
 resolution: 256   # resolution of output image to network
 with_mask: false   # whether to include mask information in the input
