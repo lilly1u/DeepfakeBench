@@ -544,6 +544,34 @@ def generate_dataset_file(dataset_name, dataset_root_path, output_file_path, com
                         split = 'test'
                     dataset_dict[dataset_name][label][split][image_name] = {'label': label, 'frames': image_path.path}
 
+    ## DeepFakeFace dataset
+    elif dataset_name == 'Diffusion_Deepfakes':
+        dataset_path = os.path.join(dataset_root_path, dataset_name)
+        dataset_dict[dataset_name] = {'Diffusion_Deepfakes_Real': {'train': {}, 'test': {}, 'val': {}},
+                                      'Diffusion_Deepfakes_Fake': {'train': {}, 'test': {}, 'val': {}}}
+
+        for folder in os.scandir(dataset_path):
+            if not os.path.isdir(folder):
+                continue
+            elif folder.name in ['wiki', 'JBD', 'DFDB']:
+                images = list(os.scandir(os.path.join(dataset_path, folder.name, 'frames')))
+                random.shuffle(images)  # Shuffle images randomly
+
+                num_images = len(images)
+                train_split = int(0.8 * num_images)
+                val_split = int(0.9 * num_images)
+
+                label = 'Diffusion_Deepfakes_Fake' if folder.name in ['JBD', 'DFDB'] else 'DeepFakeFace_Real'
+
+                for i, image_path in enumerate(images):
+                    image_name = str(image_path.name)
+                    if i < train_split:
+                        split = 'train'
+                    elif i < val_split:
+                        split = 'val'
+                    else:
+                        split = 'test'
+                    dataset_dict[dataset_name][label][split][image_name] = {'label': label, 'frames': image_path.path}
 
     # Convert the dataset dictionary to JSON format and save to file
     output_file_path = os.path.join(output_file_path, dataset_name + '.json')

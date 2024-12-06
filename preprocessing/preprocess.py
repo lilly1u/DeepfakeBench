@@ -384,6 +384,12 @@ if __name__ == '__main__':
     elif dataset_name == 'DeepFakeFace':
         sub_dataset_names = ['wiki', 'inpainting', 'insight', 'text2img']
         sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
+
+    ## Diffusion_Deepfakes
+    elif dataset_name == 'Diffusion_Deepfakes':
+        sub_dataset_names = ['wiki', 'DFDB', 'JDB']
+        sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
+
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized")
 
