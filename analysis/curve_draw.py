@@ -8,15 +8,18 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from itertools import cycle
 from sklearn import metrics
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_auc_score, roc_curve, auc, \
+    precision_recall_curve, average_precision_score
 
 # collect path for each detector
-available_list = ['srm', 'xception', 'f3net', 'ucf', 'cnn_aug', 'spsl', 'efficientnetb4', 'capsule', 'meso4', 'recce', 'meso4Inception', 'ffd', 'core', 'fwa', 'facexray']
-data_list = ['/mntcephfs/lab_data/zhiyuanyan/benchmark_results/auc_draw', '/mntcephfs/lab_data/yuanxinhang/benchmark_results/auc_draw', '/mntcephfs/lab_data/tianshuoge/benchmark_results/auc_draw']
+available_list = ['xception_2024-12-06-05-07-44', 'xception_2024-12-06-04-51-01', 'f3net', 'ucf', 'cnn_aug', 'spsl',
+                  'efficientnetb4', 'capsule', 'meso4', 'recce', 'meso4Inception', 'ffd', 'core', 'fwa', 'facexray']
+data_list = ['/content/DeepfakeBench/logs/training/']
 detector_list = []
 for data in data_list:
     detector = os.listdir(data)
     for d in detector:
+        print("Detector: ", d)
         if d in available_list:
             detector_list.append(os.path.join(data, d))
 
@@ -29,10 +32,9 @@ dataset_dict = defaultdict(list)
 for i, detector in enumerate(detector_list):
     print('------------------------------------------')
     print(f'evaluate on {detector}...')
-    
+    print(i, detector)
     # collect pred, label, prob for each detector
-    test_datasets = glob.glob(os.path.join(detector, '*', 'test'))
-
+    test_datasets = glob.glob(os.path.join(detector, 'test'))
     detector = detector.split('/')[-1]
 
     for test_data_path in test_datasets:
@@ -41,18 +43,19 @@ for i, detector in enumerate(detector_list):
         print(f'train on {train_dataset}, test on {test_data}')
 
         for one_test_data in test_data:
-            print(f'evaluate on test data: {one_test_data}...')
-            test_metric_dict_path = os.path.join(test_data_path, one_test_data, 'metric_dict_best.pickle')
-            with open(test_metric_dict_path, 'rb') as f:
-                test_metric_dict = pickle.load(f)
-            prob = test_metric_dict['pred']
-            label = test_metric_dict['label']
-            
+            if one_test_data != 'avg':
+                print(f'evaluate on test data: {one_test_data}...')
+                test_metric_dict_path = os.path.join(test_data_path, one_test_data, 'metric_dict_best.pickle')
+                with open(test_metric_dict_path, 'rb') as f:
+                    test_metric_dict = pickle.load(f)
+                prob = test_metric_dict['pred']
+                label = test_metric_dict['label']
+
             if train_dataset not in ['FF-DF', 'FF-F2F', 'FF-NT', 'FF-FS']:
                 # Calculate AUC
                 fpr, tpr, _ = roc_curve(label, prob)
                 roc_auc = auc(fpr, tpr)
-                
+
                 # Calculate Precision-Recall
                 precision, recall, _ = precision_recall_curve(label, prob)
                 average_precision = average_precision_score(label, prob)
@@ -62,8 +65,8 @@ for i, detector in enumerate(detector_list):
 
 # Now we have the metrics for all detectors on each dataset, we can plot them.
 for dataset, metrics_list in tqdm(dataset_dict.items()):
-    fig1, ax1 = plt.subplots(figsize=(10, 7)) # ROC-AUC
-    fig2, ax2 = plt.subplots(figsize=(10, 7)) # Precision-Recall
+    fig1, ax1 = plt.subplots(figsize=(10, 7))  # ROC-AUC
+    fig2, ax2 = plt.subplots(figsize=(10, 7))  # Precision-Recall
 
     for fpr, tpr, roc_auc, precision, recall, average_precision, detector in metrics_list:
         # Plot ROC curve
