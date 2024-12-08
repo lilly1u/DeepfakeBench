@@ -553,7 +553,7 @@ def generate_dataset_file(dataset_name, dataset_root_path, output_file_path, com
         for folder in os.scandir(dataset_path):
             if not os.path.isdir(folder):
                 continue
-            elif folder.name in ['wiki', 'JBD', 'DFDB']:
+            elif folder.name in ['wiki', 'DiffusionDB_Final', 'Fakes']:
                 images = list(os.scandir(os.path.join(dataset_path, folder.name, 'frames')))
                 random.shuffle(images)  # Shuffle images randomly
 
@@ -561,7 +561,7 @@ def generate_dataset_file(dataset_name, dataset_root_path, output_file_path, com
                 train_split = int(0.8 * num_images)
                 val_split = int(0.9 * num_images)
 
-                label = 'Diffusion_Deepfakes_Fake' if folder.name in ['JBD', 'DFDB'] else 'DeepFakeFace_Real'
+                label = 'Diffusion_Deepfakes_Fake' if folder.name in ['Fakes', 'DiffusionDB_Final'] else 'Diffusion_Deepfakes_Real'
 
                 for i, image_path in enumerate(images):
                     image_name = str(image_path.name)

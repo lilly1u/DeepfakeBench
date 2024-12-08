@@ -1,8 +1,8 @@
 # log dir 
-log_dir: /mntcephfs/lab_data/zhiyuanyan/benchmark_results/logs_final/spsl_4frames
+log_dir: /content/DeepfakeBench/logs/testing_bench
 
 # model setting
-pretrained: /data/home/zhiyuanyan/DeepfakeBench/training/pretrained/xception-b5690688.pth   # path to a pre-trained model, if using one
+pretrained: /content/DeepfakeBench/training/pretrained/pretrained/xception-b5690688.pth   # path to a pre-trained model, if using one
 # pretrained: /home/tianshuoge/resnet34-b627a593.pth   # path to a pre-trained model, if using one
 model_name: spsl   # model name
 backbone_name: xception  # backbone name
@@ -15,9 +15,9 @@ backbone_config:
   dropout: false
 
 # dataset
-all_dataset: [FaceForensics++, FF-F2F, FF-DF, FF-FS, FF-NT, FaceShifter, DeepFakeDetection, Celeb-DF-v1, Celeb-DF-v2, DFDCP, DFDC, DeeperForensics-1.0, UADFV]
-train_dataset: [FF-FS]
-test_dataset: [FaceForensics++, FF-F2F, FF-DF, FF-FS, FF-NT]
+all_dataset: [FaceForensics++, FF-F2F, FF-DF, FF-FS, FF-NT, FaceShifter, DeepFakeDetection, Celeb-DF-v1, Celeb-DF-v2, DFDCP, DFDC, DeeperForensics-1.0, UADFV, DeepFakeFace, Diffusion_Deepfakes]
+train_dataset: [Diffusion_Deepfakes]
+test_dataset: [Diffusion_Deepfakes]
 
 compression: c23  # compression-level for videos
 train_batchSize: 32   # training batch size
@@ -80,7 +80,7 @@ loss_func: cross_entropy   # loss function to use
 losstype: null
 
 # metric
-metric_scoring: auc   # metric for evaluation (auc, acc, eer, ap)
+metric_scoring: acc   # metric for evaluation (auc, acc, eer, ap)
 
 # cuda
 

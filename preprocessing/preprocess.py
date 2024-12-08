@@ -282,7 +282,9 @@ def preprocess_images(dataset_path, logger):
     Returns:
         None
     """
-    image_paths = sorted([Path(p) for p in glob.glob(os.path.join(dataset_path, "**/*.jpg"), recursive=True)])
+
+
+    image_paths = sorted([Path(p) for p in glob.glob(os.path.join(dataset_path, "**/*.[jp][pn]g"), recursive=True)])
     if not image_paths:
         logger.error(f"No images found in {dataset_path}")
         return
@@ -387,7 +389,7 @@ if __name__ == '__main__':
 
     ## Diffusion_Deepfakes
     elif dataset_name == 'Diffusion_Deepfakes':
-        sub_dataset_names = ['wiki', 'DFDB', 'JDB']
+        sub_dataset_names = ['wiki', 'DiffusionDB_Final', 'Fakes']
         sub_dataset_paths = [Path(os.path.join(dataset_path, name)) for name in sub_dataset_names]
 
     else:

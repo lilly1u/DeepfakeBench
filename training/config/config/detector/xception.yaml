@@ -1,4 +1,4 @@
-# log dir 
+# log dir
 log_dir: /content/DeepfakeBench/logs/testing_bench
 
 # model setting
@@ -14,9 +14,9 @@ backbone_config:
   dropout: false
 
 # dataset
-all_dataset: [FaceForensics++, FF-F2F, FF-DF, FF-FS, FF-NT, FaceShifter, DeepFakeDetection, Celeb-DF-v1, Celeb-DF-v2, DFDCP, DFDC, DeeperForensics-1.0, UADFV, DeepFaceFake]
-train_dataset: [DeepFakeFace]
-test_dataset: [DeepFakeFace]
+all_dataset: [FaceForensics++, FF-F2F, FF-DF, FF-FS, FF-NT, FaceShifter, DeepFakeDetection, Celeb-DF-v1, Celeb-DF-v2, DFDCP, DFDC, DeeperForensics-1.0, UADFV, DeepFakeFace, Diffusion_Deepfakes]
+train_dataset: [Diffusion_Deepfakes]
+test_dataset: [Diffusion_Deepfakes]
 
 compression: c23  # compression-level for videos
 train_batchSize: 32   # training batch size
@@ -78,7 +78,7 @@ loss_func: cross_entropy   # loss function to use
 losstype: null
 
 # metric
-metric_scoring: auc   # metric for evaluation (auc, acc, eer, ap)
+metric_scoring: acc   # metric for evaluation (auc, acc, eer, ap)
 
 # cuda
 

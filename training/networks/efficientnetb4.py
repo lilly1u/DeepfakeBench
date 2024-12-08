@@ -29,7 +29,7 @@ class EfficientNetB4(nn.Module):
 
         # Load the EfficientNet-B4 model without pre-trained weights
         if efficientnetb4_config['pretrained']:
-            self.efficientnet = EfficientNet.from_pretrained('efficientnet-b4',weights_path=efficientnetb4_config['pretrained'])  # FIXME: load the pretrained weights from online
+            self.efficientnet = EfficientNet.from_pretrained('efficientnet-b4')
         # self.efficientnet = EfficientNet.from_name('efficientnet-b4')
         else:
             self.efficientnet = EfficientNet.from_name('efficientnet-b4')
